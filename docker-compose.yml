@@ -1,0 +1,21 @@
+services:
+  infinitetalk:
+    build:
+      context: .
+      dockerfile: Dockerfile.gpu
+    image: infinitetalk-gpu:latest
+    ports:
+      - "7860:7860"
+    volumes:
+      - ./weights:/app/weights
+      - ./outputs:/app/outputs
+    environment:
+      - MODE=ui
+      - GRADIO_PORT=7860
+      - HF_TOKEN=${HF_TOKEN:-}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]
+    runtime: nvidia

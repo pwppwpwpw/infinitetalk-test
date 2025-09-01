@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.env
+.venv
+
+# Big stuff
+weights/
+outputs/
+runs/
+cache/
+data/
+.wandb/
+hf_cache/
+
+# Git
+.git
+.gitignore

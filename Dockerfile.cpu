@@ -1,0 +1,42 @@
+# CPU-only base
+FROM python:3.10-slim
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    HF_HOME=/root/.cache/huggingface
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git git-lfs ffmpeg build-essential libsndfile1 curl ca-certificates && \
+    rm -rf /var/lib/apt/lists/* && \
+    git lfs install
+
+WORKDIR /app
+COPY requirements.txt ./
+
+# CPU torch build (no CUDA index URL)
+RUN pip install --upgrade pip && \
+    pip install torch==2.4.1 torchvision==0.19.1 torchaudio==2.4.1 && \
+    pip install xformers==0.0.28 || true  # allow failure on CPU; manylinux wheels may be unavailable
+
+RUN pip install misaki[en] psutil packaging wheel ninja || true
+# flash_attn isn't available CPU-only; skip it gracefully
+RUN pip install -r requirements.txt && \
+    pip install librosa huggingface_hub "huggingface_hub[cli]"
+
+COPY . ./
+VOLUME ["/app/weights"]
+EXPOSE 7860
+
+ENV HF_TOKEN="" \
+    WEIGHTS_DIR="/app/weights" \
+    GRADIO_PORT=7860 \
+    HOST=0.0.0.0 \
+    MODE=ui
+
+ENTRYPOINT ["/bin/bash", "-lc"]
+CMD if [ "$MODE" = "ui" ]; then \
+        python app.py --server_name $HOST --server_port $GRADIO_PORT; \
+    else \
+        /bin/bash; \
+    fi

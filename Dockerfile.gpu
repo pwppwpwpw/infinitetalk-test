@@ -1,0 +1,68 @@
+# CUDA 12.1 + cuDNN base for PyTorch 2.4.1/cu121
+FROM nvidia/cuda:12.1.1-cudnn-runtime-ubuntu22.04
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    HF_HOME=/root/.cache/huggingface \
+    TORCH_CUDA_ARCH_LIST="All" \
+    UV_ICU_DATA_PATH=/usr/share/icu
+
+# System deps
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3.10 python3.10-venv python3-pip python3-dev \
+    git git-lfs ffmpeg \
+    build-essential ninja-build pkg-config \
+    libsndfile1 curl ca-certificates && \
+    rm -rf /var/lib/apt/lists/* && \
+    git lfs install
+
+# Workdir
+WORKDIR /app
+
+# Copy minimal first for better layer caching
+COPY requirements.txt ./
+# Install torch stack first (pin to cu121 as in README)
+RUN pip install --upgrade pip && \
+    pip install --index-url https://download.pytorch.org/whl/cu121 \
+        torch==2.4.1 torchvision==0.19.1 torchaudio==2.4.1 && \
+    pip install --index-url https://download.pytorch.org/whl/cu121 \
+        xformers==0.0.28
+
+# Flash-Attention & other extras (per README)
+RUN pip install misaki[en] psutil packaging wheel ninja && \
+    pip install flash_attn==2.7.4.post1
+
+# Project deps
+COPY . ./
+# librosa is in conda in README, but works via pip if we add libsndfile (installed above)
+RUN pip install -r requirements.txt && \
+    pip install librosa huggingface_hub "huggingface_hub[cli]"
+
+# Expose weights dir as a volume
+VOLUME ["/app/weights"]
+
+# Default Gradio port
+EXPOSE 7860
+
+# Environment knobs (override at runtime if needed)
+ENV HF_TOKEN="" \
+    WEIGHTS_DIR="/app/weights" \
+    GRADIO_PORT=7860 \
+    HOST=0.0.0.0
+
+# Healthcheck: basic TCP probe
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s CMD bash -c "exec 3<>/dev/tcp/127.0.0.1/$GRADIO_PORT && echo -e 'GET / HTTP/1.0\r\n' >&3 || exit 1"
+
+# Two entry modes:
+#  1) Gradio UI (app.py)  -> docker run ... -e MODE=ui
+#  2) CLI sampler         -> docker run ... -e MODE=cli <args>
+ENV MODE=ui
+
+ENTRYPOINT ["/bin/bash", "-lc"]
+CMD if [ "$MODE" = "ui" ]; then \
+        python app.py --server_name $HOST --server_port $GRADIO_PORT; \
+    else \
+        echo "Run CLI like: docker run ... -e MODE=cli -- python generate_infinitetalk.py --ckpt_dir \$WEIGHTS_DIR/Wan2.1-I2V-14B-480P --wav2vec_dir \$WEIGHTS_DIR/chinese-wav2vec2-base --infinitetalk_dir \$WEIGHTS_DIR/InfiniteTalk/single/infinitetalk.safetensors --input_json examples/single_example_image.json --size infinitetalk-480 --sample_steps 40 --mode streaming --motion_frame 9 --save_file infinitetalk_res"; \
+        /bin/bash; \
+    fi

@@ -362,6 +362,74 @@ python app.py \
     --motion_frame 9 
 ```
 
+## 🖥️ Hardware Requirements
+
+Below are recommended and minimal hardware specifications for running **InfiniteTalk** for different video resolutions and usage modes. Your actual requirements may vary depending on video length, model settings, GPU architecture, and VRAM optimizations (quantization, low-VRAM mode, etc.).
+
+---
+
+### Minimum Spec (for basic usage, 480p)
+
+| Component       | Minimum Recommended                |
+|------------------|-------------------------------------|
+| GPU              | NVIDIA GPU with **≥ 8 GB VRAM**        |
+| System RAM       | 16 GB                                |
+| Disk Space       | ~ 20-30 GB free (for weights + temp) |
+| CPU              | 4-core, modern CPU                  |
+| Other            | CUDA, cuDNN drivers, correct PyTorch / Torch / dependencies versions |
+
+This allows basic 480p inference with short clips, using default settings.
+
+---
+
+### Recommended Spec (for good performance, longer videos, 480p / 720p)
+
+| Component       | Recommended                          |
+|------------------|---------------------------------------|
+| GPU              | 12-16 GB VRAM or more (e.g. RTX 3060 Ti+, RTX 3090, or equivalent) |
+| System RAM       | 32 GB+                                |
+| Disk Space       | 50 GB+ (for weights, checkpoints, temporary files) |
+| CPU              | 6-8 cores or more, high clock speed   |
+| Multi-GPU        | Optional but helpful for 720p / high throughput / long streaming mode |
+
+---
+
+### High-End / Optimal Spec (for best quality, 720p+, multi-GPU, long streaming)
+
+| Component       | Ideal Spec                           |
+|------------------|---------------------------------------|
+| GPU              | 24 GB+ VRAM (e.g. RTX 3090 / 4090 / professional GPUs), or multiple GPUs in parallel |
+| System RAM       | 64 GB or more                        |
+| Disk Space       | 100 GB+ (for multiple model versions, logs, output video storage) |
+| CPU              | Multi-core (8-16) with good throughput |
+| Other            | Support for quantization / low-VRAM mode (e.g. setting `--num_persistent_param_in_dit 0`), possibly use of caching (TeaCache), etc. |
+
+---
+
+### Tips to Reduce Hardware Load
+
+- Use **low-VRAM mode**: setting `--num_persistent_param_in_dit 0` helps reduce memory footprint.  
+- Use quantized models (if available) to decrease memory usage at the cost of some precision / performance.  
+- Use smaller batch size, fewer motion frames, or reduce resolution.  
+- If available, distribute inference across multiple GPUs.  
+
+---
+
+### Example Configurations
+
+| Use Case                                   | GPU            | Notes |
+|---------------------------------------------|------------------|--------|
+| Short clip 480p for test / development      | ~ 8-12 GB VRAM   | Might be slow, likely near VRAM limit |
+| Longer clip / streaming in 480p             | 12-16 GB GPU     | smoother, fewer OOM errors |
+| 720p video / high quality or production use | 24 GB+ or multi GPUs | Needed for good performance and stability |
+
+---
+
+> ⚠️ **Disclaimer**: These are guidelines based on community reports and observed behavior. Depending on your GPU model (architecture, memory bandwidth), driver, mixed precision support, etc., requirements may differ.
+
+---
+
+If you like, I can also draft a **“Hardware Benchmarks”** section with observed memory usage / runtime for specific GPUs (e.g. RTX 3060 / 3090 / 4090) — that could help users gauge what they need. Want me to include that?  
 
 ## 📚 Citation
 

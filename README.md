@@ -161,6 +161,137 @@ or
 sudo yum install ffmpeg ffmpeg-devel
 ```
 
+### 🐧 Ubuntu-Specific Installation Tips
+
+If you're using Ubuntu and encountering installation issues, here are some specific solutions:
+
+#### 1. System Dependencies (Ubuntu 20.04/22.04/24.04)
+```bash
+# Update package lists first
+sudo apt update && sudo apt upgrade -y
+
+# Install essential build tools and libraries
+sudo apt install -y build-essential cmake git wget curl
+sudo apt install -y libgl1-mesa-glx libglib2.0-0 libsm6 libxext6 libxrender-dev libgomp1
+sudo apt install -y libsndfile1 libsndfile1-dev
+sudo apt install -y ffmpeg libavcodec-dev libavformat-dev libavutil-dev libswscale-dev
+```
+
+#### 2. FFmpeg Installation (Ubuntu-specific)
+```bash
+# Method 1: Using apt (recommended for Ubuntu)
+sudo apt install -y ffmpeg
+
+# Method 2: If you need a newer version
+sudo add-apt-repository ppa:jonathonf/ffmpeg-4
+sudo apt update
+sudo apt install -y ffmpeg
+
+# Method 3: Using conda (if you prefer)
+conda install -c conda-forge ffmpeg
+```
+
+#### 3. CUDA and PyTorch Setup
+```bash
+# Install CUDA toolkit (if not already installed)
+wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.0-1_all.deb
+sudo dpkg -i cuda-keyring_1.0-1_all.deb
+sudo apt update
+sudo apt install -y cuda-toolkit-12-1
+
+# Verify CUDA installation
+nvcc --version
+nvidia-smi
+```
+
+#### 4. Flash Attention Installation Issues
+If flash-attn installation fails, try these alternatives:
+
+```bash
+# Method 1: Install with specific flags
+pip install flash-attn==2.7.4.post1 --no-build-isolation
+
+# Method 2: If compilation fails, install pre-compiled wheel
+pip install flash-attn==2.7.4.post1 --find-links https://flash-attention.s3.amazonaws.com/
+
+# Method 3: Install from source with proper environment
+export CUDA_HOME=/usr/local/cuda
+export PATH=$CUDA_HOME/bin:$PATH
+export LD_LIBRARY_PATH=$CUDA_HOME/lib64:$LD_LIBRARY_PATH
+pip install flash-attn==2.7.4.post1 --no-build-isolation
+```
+
+#### 5. Common Ubuntu Issues and Solutions
+
+**Issue: "Unable to locate package" errors**
+```bash
+sudo apt update
+sudo apt install -y software-properties-common
+```
+
+**Issue: Permission denied during pip install**
+```bash
+# Use --user flag or create virtual environment
+pip install --user package_name
+# OR
+python -m venv infinitetalk_env
+source infinitetalk_env/bin/activate
+```
+
+**Issue: CUDA out of memory during installation**
+```bash
+# Set environment variables to limit memory usage
+export PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:512
+export CUDA_VISIBLE_DEVICES=0
+```
+
+**Issue: Missing development headers**
+```bash
+sudo apt install -y python3-dev python3-pip
+sudo apt install -y libjpeg-dev zlib1g-dev libpng-dev
+```
+
+#### 6. Complete Ubuntu Installation Script
+```bash
+#!/bin/bash
+# Complete installation script for Ubuntu
+
+# Update system
+sudo apt update && sudo apt upgrade -y
+
+# Install system dependencies
+sudo apt install -y build-essential cmake git wget curl
+sudo apt install -y libgl1-mesa-glx libglib2.0-0 libsm6 libxext6 libxrender-dev libgomp1
+sudo apt install -y libsndfile1 libsndfile1-dev ffmpeg
+sudo apt install -y python3-dev python3-pip libjpeg-dev zlib1g-dev libpng-dev
+
+# Install conda (if not already installed)
+wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+bash Miniconda3-latest-Linux-x86_64.sh -b -p $HOME/miniconda3
+echo 'export PATH="$HOME/miniconda3/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+
+# Create environment and install packages
+conda create -n multitalk python=3.10 -y
+conda activate multitalk
+
+# Install PyTorch with CUDA 12.1
+pip install torch==2.4.1 torchvision==0.19.1 torchaudio==2.4.1 --index-url https://download.pytorch.org/whl/cu121
+
+# Install xformers
+pip install -U xformers==0.0.28 --index-url https://download.pytorch.org/whl/cu121
+
+# Install other dependencies
+pip install misaki[en] ninja psutil packaging wheel
+pip install flash-attn==2.7.4.post1 --no-build-isolation
+
+# Install remaining requirements
+pip install -r requirements.txt
+conda install -c conda-forge librosa -y
+
+echo "Installation completed! Activate the environment with: conda activate multitalk"
+```
+
 ### 🧱Model Preparation
 
 #### 1. Model Download

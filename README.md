@@ -46,6 +46,12 @@ We propose **InfiniteTalk**​​, a novel sparse-frame video dubbing framework.
 
 
 
+## 🛠️ Training the audio adapter
+
+If you want to fine-tune the audio adapter (`AudioProjModel`), see `tools/TRAINING_AUDIO_ADAPTER.md` for the required setup, dataset manifest format, and an example training command.
+
+
+
 ## 🌐 Community  Works
 - [Wan2GP](https://github.com/deepbeepmeep/Wan2GP/): Thanks [deepbeepmeep](https://github.com/deepbeepmeep) for integrating InfiniteTalk in Wan2GP that is optimized for low VRAM and offers many video edtiting option and other models (MMaudio support, Qwen Image Edit, ...). 
 - [ComfyUI](https://github.com/kijai/ComfyUI-WanVideoWrapper): Thanks for the comfyui support of [kijai](https://github.com/kijai). 

@@ -279,6 +279,16 @@ class InfiniteTalkPipeline:
         self.num_timesteps = num_timesteps
         self.use_timestep_transform = use_timestep_transform
 
+        model_dtype = next(iter(self.model.parameters())).dtype
+        logging.info(
+            "Precision summary: param_dtype=%s model_dtype=%s t5_dtype=%s clip_dtype=%s t5_cpu=%s",
+            self.param_dtype,
+            model_dtype,
+            getattr(config, "t5_dtype", None),
+            getattr(config, "clip_dtype", None),
+            self.t5_cpu,
+        )
+
         self.cpu_offload = False
         self.model_names = ["model"]
         self.vram_management = False

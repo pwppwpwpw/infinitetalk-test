@@ -408,6 +408,34 @@ class InfiniteTalkPipeline:
             offload_model (`bool`, *optional*, defaults to True):
                 If True, offloads models to CPU during generation to save VRAM
         """
+        def log_tensor_stats(name, tensor):
+            if tensor is None:
+                logging.warning("%s is None", name)
+                return
+            if not torch.is_tensor(tensor):
+                logging.warning("%s is not a tensor: %s", name, type(tensor))
+                return
+            has_nan = torch.isnan(tensor).any().item()
+            has_inf = torch.isinf(tensor).any().item()
+            if has_nan or has_inf:
+                finite_mask = torch.isfinite(tensor)
+                if finite_mask.any():
+                    finite_vals = tensor[finite_mask]
+                    min_val = finite_vals.min().item()
+                    max_val = finite_vals.max().item()
+                else:
+                    min_val = float("nan")
+                    max_val = float("nan")
+                logging.warning(
+                    "%s has nan=%s inf=%s dtype=%s shape=%s min=%s max=%s",
+                    name,
+                    has_nan,
+                    has_inf,
+                    tensor.dtype,
+                    tuple(tensor.shape),
+                    min_val,
+                    max_val,
+                )
 
         # init teacache
         if extra_args.use_teacache:
@@ -654,6 +682,9 @@ class InfiniteTalkPipeline:
                     'audio': audio_embs,
                     'ref_target_masks': ref_target_masks
                 }
+                log_tensor_stats("audio_embs", audio_embs)
+                log_tensor_stats("ref_target_masks", ref_target_masks)
+                log_tensor_stats("cond_y", y)
 
 
                 arg_null_text = {
@@ -710,16 +741,27 @@ class InfiniteTalkPipeline:
                     timestep = timesteps[i]
                     latent[:, :cur_motion_frames_latent_num] = latent_motion_frames
                     latent_model_input = [latent.to(self.device)]
+                    if i == 0:
+                        log_tensor_stats("latent_step0_before", latent)
+                        logging.info(
+                            "step0 guide scales: text=%s audio=%s",
+                            text_guide_scale,
+                            audio_guide_scale,
+                        )
 
                     # inference with CFG strategy
                     noise_pred_cond = self.model(
                     latent_model_input, t=timestep, **arg_c)[0] 
                     torch_gc()
+                    if i == 0:
+                        log_tensor_stats("noise_pred_cond_step0", noise_pred_cond)
 
                     if math.isclose(text_guide_scale, 1.0):
                         noise_pred_drop_audio = self.model(
                             latent_model_input, t=timestep, **arg_null_audio)[0]  
                         torch_gc()
+                        if i == 0:
+                            log_tensor_stats("noise_pred_drop_audio_step0", noise_pred_drop_audio)
                     else:
                         noise_pred_drop_text = self.model(
                             latent_model_input, t=timestep, **arg_null_text)[0] 
@@ -727,6 +769,9 @@ class InfiniteTalkPipeline:
                         noise_pred_uncond = self.model(
                             latent_model_input, t=timestep, **arg_null)[0]  
                         torch_gc()
+                        if i == 0:
+                            log_tensor_stats("noise_pred_drop_text_step0", noise_pred_drop_text)
+                            log_tensor_stats("noise_pred_uncond_step0", noise_pred_uncond)
 
                     if extra_args.use_apg:
                         # correct update direction
@@ -756,11 +801,17 @@ class InfiniteTalkPipeline:
                                 noise_pred_cond - noise_pred_drop_text) + \
                                 audio_guide_scale * (noise_pred_drop_text - noise_pred_uncond)  
                     noise_pred = -noise_pred  
+                    if i == 0:
+                        log_tensor_stats("noise_pred_step0", noise_pred)
 
                     # update latent
                     dt = timesteps[i] - timesteps[i + 1]
                     dt = dt / self.num_timesteps
+                    if i == 0:
+                        log_tensor_stats("dt_step0", dt)
                     latent = latent + noise_pred * dt[:, None, None, None]
+                    if i == 0:
+                        log_tensor_stats("latent_step0_after", latent)
 
                     # injecting motion frames
                     if not is_first_clip:
